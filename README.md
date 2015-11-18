@@ -1,4 +1,4 @@
-Database realtime changefeed
+Database realtime changefeed [![Build Status](https://travis-ci.org/tyth/db-realtime-changefeed.svg)](https://travis-ci.org/tyth/db-realtime-changefeed)
 ---
 
 ### Introduction
