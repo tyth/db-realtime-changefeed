@@ -13,6 +13,8 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 case class ChangeEvent[K, V](key: K, oldValue: Option[V], newValue: V)
 
 case class Trigger[K, V](id: UUID, condition: (V, V) => Boolean, callback: ChangeEvent[K, V] => Unit)
@@ -63,7 +65,7 @@ case class MongoCollectionFeedBuilder[K: Ordering, V](name: String, database: Mo
     }
   }
 
-  def addTrigger(condition: (V, V) => Boolean, callback: ChangeEvent[K, V] => Unit) = {
+  def addTrigger(condition: (V, V) => Boolean, callback: ChangeEvent[K, V] => Unit): MongoCollectionFeedBuilder[K, V] = {
     addTrigger(Trigger(UUID.randomUUID(), condition, callback))
   }
 
