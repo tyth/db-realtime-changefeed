@@ -16,12 +16,14 @@ This project provides real-time change feed as a layer on top of existing databa
 
 Restrictions: All updates has to come through one CollectionFeed.
 
-```
+```scala
 import org.db.changefeed._
 import MongoDbImplicits._
 
 import org.mongodb.scala.MongoClient
 import org.joda.time.DateTime
+
+import scala.concurrent.duration._
 
 val db = MongoClient().getDatabase("mydb")
 val feedBuilder = MongoDbChangefeed(db).collection[DateTime, Long]("metrics")
@@ -29,7 +31,7 @@ val feedBuilder = MongoDbChangefeed(db).collection[DateTime, Long]("metrics")
 val condition = (oldVal: Long, newVal: Long) => math.abs(oldVal - newVal) > 2
 val action = (event: ChangeEvent[DateTime, Long]) => println(s"Oh, new update: $event")
 
-val feedF = feedBuilder.addTrigger(condition, action).build
+val feedF = feedBuilder.addTrigger(condition, action).range(DateTimeRange.last(2.hours)).build
 
 feedF map { feed =>
 
@@ -46,3 +48,7 @@ feedF map { feed =>
 ```
 
 If `MongoDbChangefeed` is not provided with ActorSystem as an implicit parameter, it creates a new one with daemonic threads.
+
+If `range` is specified, only changes in that interval are monitored. It allows a changefeed to maintain constant memory consumption over time. A changefeed regularly (by default it's once in a minute) cleans up all data outside that range. All increments outside specified range will be stored in the backend database, but no change event will be ever fired.
+
+Changefeed is build with abstract key and value types in mind, with restrictions that key is `Ordering`, and value is `Numeric`.You can use it with your own types, if you provide corresponding `MongoDbKey[K]` and `MongoDbValue[V]` type classes.
