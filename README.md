@@ -3,8 +3,6 @@ Database realtime changefeed [![Build Status](https://travis-ci.org/tyth/db-real
 
 ### Introduction
 
-Note: This is a proof-of-concept project right now. WIP.
-
 This project is intended as a backend for real-time dashboards, where updates are pushed from the server.
 When there are thousands of metric changes per second, you don't want to push updates to a client for every small change.
 `Trigger` allow you to specify a condition (e.g. _X_ changed for more than 10% from last notification time) on which an event will be fired.

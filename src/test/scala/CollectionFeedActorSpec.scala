@@ -5,7 +5,7 @@ import java.util.UUID
 import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.testkit.{DefaultTimeout, TestActorRef, TestKit}
-import org.db.changefeed.CollectionFeedActor.{CleanUp, Fetch, Increment}
+import org.db.changefeed.CollectionFeedActor.{FetchRange, CleanUp, FetchAll, Increment}
 import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
@@ -121,6 +121,25 @@ with ScalaFutures with MockFactory {
     "fetch sorted values" in new Fixture {
       val ts1 = DateTime.now
       val ts2 = ts1.minusSeconds(10)
+      val ts3 = ts1.minusSeconds(20)
+      val ts4 = ts1.minusSeconds(30)
+      val actorRef = createActor(collection, values = Map(ts1 -> 1l, ts2 -> 1l, ts3 -> 1l, ts4 -> 1l, ts1.plusMinutes(1) -> 1l))
+
+      val resultF = for {
+        result <- actorRef ? FetchRange(ts3, ts1)
+      } yield result
+
+      whenReady(resultF.mapTo[Seq[(DateTime, Long)]]) { data =>
+        data should have size 3
+        data(0) should be(ts3 -> 1l)
+        data(1) should be(ts2 -> 1l)
+        data(2) should be(ts1 -> 1l)
+      }
+    }
+
+    "fetch restricted range" in new Fixture {
+      val ts1 = DateTime.now
+      val ts2 = ts1.minusSeconds(10)
       val actorRef = createActor(collection)
 
       (collection.increment _).expects(*, *).returning(Future.successful(true)).repeat(3)
@@ -129,7 +148,7 @@ with ScalaFutures with MockFactory {
         _ <- actorRef ? Increment(ts1, 1l)
         _ <- actorRef ? Increment(ts1, 2l)
         _ <- actorRef ? Increment(ts2, 1l)
-        result <- actorRef ? Fetch
+        result <- actorRef ? FetchAll
       } yield result
 
       whenReady(resultF.mapTo[Seq[(DateTime, Long)]]) { data =>
@@ -156,7 +175,7 @@ with ScalaFutures with MockFactory {
         _ <- actorRef ? Increment(ts.plusSeconds(20), 1l)
         _ <- actorRef ? Increment(ts.plusSeconds(40), 1l)
         _ <- actorRef ? CleanUp
-        result <- actorRef ? Fetch
+        result <- actorRef ? FetchAll
       } yield result
 
       whenReady(resultF.mapTo[Seq[(DateTime, Long)]]) { data =>

@@ -6,7 +6,7 @@ import akka.actor.{ActorRef, PoisonPill, Props, ActorSystem}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.db.changefeed.CollectionFeedActor.{CleanUp, Fetch, Increment}
+import org.db.changefeed.CollectionFeedActor.{FetchRange, CleanUp, FetchAll, Increment}
 import org.mongodb.scala.MongoDatabase
 
 import scala.collection.mutable
@@ -70,7 +70,14 @@ case class CollectionFeed[K: Ordering, V](actor: ActorRef)
    * Returns sorted sequence of key-value pairs
    */
   def fetch(): Future[Seq[(K, V)]] = {
-    (actor ? Fetch).mapTo[Seq[(K, V)]]
+    (actor ? FetchAll).mapTo[Seq[(K, V)]]
+  }
+
+  /**
+   * Returns sorted sequence of key-value pairs, restricted to inclusive interval [min, max]
+   */
+  def fetch(min: K, max: K): Future[Seq[(K, V)]] = {
+    (actor ? FetchRange(min, max)).mapTo[Seq[(K, V)]]
   }
 
   override def close(): Unit = actor ! PoisonPill

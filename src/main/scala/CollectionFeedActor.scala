@@ -56,8 +56,15 @@ class CollectionFeedActor[K: Ordering, V](collection: Collection[K, V],
           }
         }
       }
-    case Fetch =>
+    case FetchAll =>
       sender ! latestValues.toSeq.sortBy(_._1)
+    case FetchRange(anyMin: Any, anyMax: Any) =>
+      convertType(Seq(anyMin, anyMax)).foreach { case Seq(min, max) =>
+        sender ! latestValues.toSeq.filter { case (key, _) =>
+          val o = implicitly[Ordering[K]]
+          o.compare(key, min) >= 0 && o.compare(key, max) <= 0
+        }.sortBy(_._1)
+      }
     case CleanUp =>
       cleanValues(latestValues)
       lastFetchedValues.foreach { case (_, vals) =>
@@ -75,6 +82,15 @@ class CollectionFeedActor[K: Ordering, V](collection: Collection[K, V],
       throw e
   }
 
+  @unchecked
+  private def convertType(keys: Seq[Any]) = Try {
+    keys.map(_.asInstanceOf[K])
+  }.recover {
+    case e: ClassCastException =>
+      log.error("Received message with wrong types", e)
+      throw e
+  }
+
   private def inRange(key: K) = range.map(_.inRange(key)).getOrElse(true)
 
   private def cleanValues(values: mutable.Map[K, V]) = values.foreach { case (key, _) =>
@@ -86,6 +102,7 @@ class CollectionFeedActor[K: Ordering, V](collection: Collection[K, V],
 object CollectionFeedActor {
   case class Increment[K: Ordering, V](key: K, inc: V)
   case class OnIncrement[K: Ordering, V](key: K, inc: V, origin: ActorRef)
-  case object Fetch
+  case class FetchRange[K: Ordering](min: K, max: K)
+  case object FetchAll
   case object CleanUp
 }
